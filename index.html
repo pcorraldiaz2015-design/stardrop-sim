@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stardrop Simulator - Sound Control</title>
+    
+    <link rel="apple-touch-icon" href="Starr-Drop-1.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Stardrop Sim">
+
     <style>
         body {
             background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
@@ -66,9 +72,13 @@
             z-index: 20; display: flex; flex-direction: column; align-items: center;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
             transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            
+            /* Ajuste para móviles muy pequeños: evitar desborde */
+            max-width: 45%; 
+            box-sizing: border-box;
         }
-        #left-hud { left: 20px; min-width: 180px; }
-        #right-hud { right: 20px; min-width: 180px; }
+        #left-hud { left: 20px; min-width: 140px; }
+        #right-hud { right: 20px; min-width: 140px; }
 
         /* --- CUADRO FINAL --- */
         #end-screen {
@@ -96,8 +106,8 @@
         }
         .can-close { cursor: pointer !important; }
 
-        .coins { color: #ffd700; font-size: 2rem; margin: 0; }
-        .title-display { color: #00ffff; font-size: 1.4rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
+        .coins { color: #ffd700; font-size: 2rem; margin: 0; white-space: nowrap; }
+        .title-display { color: #00ffff; font-size: 1.4rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 
         .progress-container {
             width: 100%; background: #333; height: 8px; border-radius: 4px;
@@ -128,12 +138,28 @@
         #shop-image-img { width: 100%; height: auto; display: block; }
         #timer { color: #ffcc00; font-size: 1.1rem; display: none; }
 
+        /* --- RESPONSIVE MEDIA QUERIES --- */
         @media (max-width: 600px) {
             #left-hud, #right-hud { top: 10px; padding: 10px 15px; }
             .coins { font-size: 1.5rem; }
             .title-display { font-size: 1rem; }
             .level-up-active { transform: translate(50%, -50%) scale(1.5); }
             #shop-image-container { width: 60px; height: 60px; }
+            #left-hud { left: 10px; }
+            #right-hud { right: 10px; }
+        }
+
+        /* Nuevo ajuste para pantallas extremadamente estrechas (ej. iPhone SE o en split view) */
+        @media (max-width: 360px) {
+            .corner-hud { padding: 8px 10px; border-width: 2px; }
+            .coins { font-size: 1.1rem; }
+            .title-display { font-size: 0.8rem; gap: 4px; }
+            #left-hud { min-width: 100px; left: 5px; }
+            #right-hud { min-width: 100px; right: 5px; }
+            #left-hud-main { gap: 5px; }
+            #shop-image-container { width: 45px; height: 45px; }
+            #timer { font-size: 0.9rem; }
+            #xp-text { font-size: 0.6rem !important; }
         }
     </style>
 </head>
