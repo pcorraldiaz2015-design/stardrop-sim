@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stardrop Simulator - Mobile Fixed</title>
+    <title>Stardrop Simulator - Fixed Duplicate</title>
     <style>
         body {
             background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
@@ -11,7 +11,6 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-height: 100vh; margin: 0; overflow: hidden;
             padding: 10px; box-sizing: border-box;
-            /* Evita que el móvil seleccione texto o haga azul al pulsar */
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             touch-action: manipulation;
@@ -30,7 +29,6 @@
             width: 70vw; height: 70vw; max-width: 320px; max-height: 320px;
             display: flex; align-items: center; justify-content: center;
             margin: 20px 0;
-            /* Optimización para toque */
             touch-action: none; 
         }
         #stardrop-container:active { transform: scale(0.9); }
@@ -39,7 +37,7 @@
             width: 100%; height: auto;
             filter: drop-shadow(0 0 20px #56de1e);
             transition: filter 0.3s ease;
-            pointer-events: none; /* La imagen no estorba al clic */
+            pointer-events: none;
         }
 
         .rarity-label {
@@ -80,12 +78,12 @@
 
     <div id="rarity-text" class="rarity-label" style="color: #56de1e;">RARE</div>
 
-    <div id="stardrop-container" onclick="openStardrop(event)" ontouchstart="openStardrop(event)">
+    <div id="stardrop-container">
         <img src="Starr-Drop-1.png" id="stardrop-img" alt="Starr Drop">
     </div>
 
     <div class="shop">
-        <button class="buffie-btn" id="buffie-btn" onclick="buybuffie(event)" ontouchstart="buybuffie(event)">BUFFIE x2 (100 💰)</button>
+        <button class="buffie-btn" id="buffie-btn">BUFFIE x2 (100 💰)</button>
         <div id="timer" style="display:none; color: #ffcc00; font-size: 0.9rem;">¡SUERTE! <span id="secs">300</span>s</div>
     </div>
 
@@ -93,7 +91,7 @@
         let coins = 0;
         let lifetimeTotal = 0;
         let isbuffieActive = false;
-        let lastClickTime = 0; // Para evitar doble ejecución (clic + toque)
+        let lastInteractionTime = 0; // Para evitar duplicados
 
         const rarities = [
             { name: "Rare", chance: 55.4, val: 10, color: "#56de1e" },
@@ -107,11 +105,16 @@
 
         const titles = ["Noob", "Normal", "Good", "Epic player", "Legendary player", "Pro", "King", "Legend", "GOD"];
 
-        function openStardrop(event) {
-            // Evita que se ejecute dos veces en algunos dispositivos
-            if (Date.now() - lastClickTime < 100) return;
-            lastClickTime = Date.now();
-            if(event) event.preventDefault(); 
+        function handleInteraction(e) {
+            // BLOQUEO DE DUPLICADOS: Si hubo una acción hace menos de 200ms, ignoramos esta
+            const now = Date.now();
+            if (now - lastInteractionTime < 200) return;
+            lastInteractionTime = now;
+
+            // Si es un toque de móvil, evitamos que luego se dispare el evento de ratón
+            if (e.type === 'touchstart') {
+                e.preventDefault(); 
+            }
 
             let roll = Math.random() * 100;
             let luckMult = isbuffieActive ? 3 : 1;
@@ -146,11 +149,12 @@
             document.getElementById('xp-text').innerText = `Faltan ${1500 - currentXP} para el próximo título`;
         }
 
-        function buybuffie(event) {
-            if(event) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
+        function handleBuffie(e) {
+            const now = Date.now();
+            if (now - lastInteractionTime < 200) return;
+            lastInteractionTime = now;
+            
+            e.stopPropagation();
 
             if (coins >= 100 && !isbuffieActive) {
                 coins -= 100;
@@ -172,6 +176,17 @@
                 }, 1000);
             }
         }
+
+        const dropContainer = document.getElementById('stardrop-container');
+        const btnBuffie = document.getElementById('buffie-btn');
+
+        // Escuchamos ambos pero la función handleInteraction filtrará los duplicados
+        dropContainer.addEventListener('mousedown', handleInteraction);
+        dropContainer.addEventListener('touchstart', handleInteraction, {passive: false});
+
+        btnBuffie.addEventListener('click', handleBuffie);
+        btnBuffie.addEventListener('touchstart', handleBuffie, {passive: false});
+
     </script>
 </body>
 </html>
