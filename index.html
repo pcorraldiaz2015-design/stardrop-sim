@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stardrop Simulator - Responsive Edition</title>
+    <title>Stardrop Simulator - Mobile Fixed</title>
     <style>
         body {
             background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
@@ -11,24 +11,27 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             min-height: 100vh; margin: 0; overflow: hidden;
             padding: 10px; box-sizing: border-box;
+            /* Evita que el móvil seleccione texto o haga azul al pulsar */
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            touch-action: manipulation;
         }
 
-        /* Marcador de Monedas y Rango */
         .hud {
             position: absolute; top: 10px; background: rgba(0,0,0,0.85);
             padding: 10px 20px; border-radius: 15px; border: 2px solid #ffd700;
-            text-align: center; width: 90%; max-width: 300px;
-            z-index: 20;
+            text-align: center; width: 90%; max-width: 300px; z-index: 20;
         }
         .coins { color: #ffd700; font-size: 1.5rem; margin: 0; }
         .title-display { color: #00ffff; font-size: 1rem; text-transform: uppercase; margin-top: 2px; }
 
-        /* Contenedor del Starr Drop */
         #stardrop-container {
             position: relative; cursor: pointer; transition: transform 0.1s;
             width: 70vw; height: 70vw; max-width: 320px; max-height: 320px;
             display: flex; align-items: center; justify-content: center;
             margin: 20px 0;
+            /* Optimización para toque */
+            touch-action: none; 
         }
         #stardrop-container:active { transform: scale(0.9); }
 
@@ -36,52 +39,33 @@
             width: 100%; height: auto;
             filter: drop-shadow(0 0 20px #56de1e);
             transition: filter 0.3s ease;
+            pointer-events: none; /* La imagen no estorba al clic */
         }
 
         .rarity-label {
             font-size: 2.5rem; text-transform: uppercase; margin-bottom: 5px;
-            text-shadow: 3px 3px #000; font-style: italic;
-            z-index: 5;
+            text-shadow: 3px 3px #000; font-style: italic; z-index: 5;
         }
 
-        /* Barra de Progreso */
         .progress-container {
             width: 100%; background: #333; height: 8px; border-radius: 4px;
             margin-top: 5px; overflow: hidden; border: 1px solid #555;
         }
         #progress-fill { height: 100%; background: #00ffff; width: 0%; transition: width 0.3s; }
 
-        /* Tienda */
-        .shop { margin-top: 10px; z-index: 10; text-align: center; }
+        .shop { margin-top: 10px; z-index: 30; text-align: center; }
         .buffie-btn {
             background: #ff4b2b; color: white; border: 2px solid white;
             padding: 10px 20px; border-radius: 12px; font-weight: bold; 
-            cursor: pointer; font-size: 1rem; white-space: nowrap;
+            cursor: pointer; font-size: 1rem;
         }
-        .buffie-btn:disabled { background: #444; border-color: #222; opacity: 0.6; }
 
-        #timer { font-size: 0.9rem; color: #ffcc00; margin-top: 5px; }
-
-        /* --- AJUSTES PARA MÓVIL EN HORIZONTAL (LANDSCAPE) --- */
         @media (max-height: 500px) and (orientation: landscape) {
             body { flex-direction: row; justify-content: space-around; padding-top: 50px; }
-            
-            .hud { width: 180px; top: 10px; left: 10px; padding: 5px 10px; }
-            .coins { font-size: 1.2rem; }
-            .title-display { font-size: 0.8rem; }
-            
-            #stardrop-container { width: 40vh; height: 40vh; margin: 0; }
-            
+            .hud { width: 180px; top: 10px; left: 10px; }
+            #stardrop-container { width: 40vh; height: 40vh; }
             .rarity-label { font-size: 1.8rem; position: absolute; bottom: 10px; }
-            
             .shop { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
-            .buffie-btn { padding: 8px 15px; font-size: 0.8rem; }
-        }
-
-        /* Ajuste para pantallas muy pequeñas */
-        @media (max-width: 400px) {
-            .rarity-label { font-size: 2rem; }
-            .coins { font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -90,29 +74,26 @@
     <div class="hud">
         <p class="coins" id="coin-display">0 💰</p>
         <div class="title-display" id="player-title">NOOB</div>
-        <div class="progress-container">
-            <div id="progress-fill"></div>
-        </div>
+        <div class="progress-container"><div id="progress-fill"></div></div>
         <small id="xp-text" style="color: #aaa; font-size: 0.6rem;">Faltan 1500 para el próximo título</small>
     </div>
 
     <div id="rarity-text" class="rarity-label" style="color: #56de1e;">RARE</div>
 
-    <div id="stardrop-container" onclick="openStardrop()">
+    <div id="stardrop-container" onclick="openStardrop(event)" ontouchstart="openStardrop(event)">
         <img src="Starr-Drop-1.png" id="stardrop-img" alt="Starr Drop">
     </div>
 
     <div class="shop">
-        <button class="buffie-btn" id="buffie-btn" onclick="buybuffie(event)">BUFFIE x2 (100 💰)</button>
-        <div id="timer" style="display:none;">
-            ¡SUERTE! <span id="secs">300</span>s
-        </div>
+        <button class="buffie-btn" id="buffie-btn" onclick="buybuffie(event)" ontouchstart="buybuffie(event)">BUFFIE x2 (100 💰)</button>
+        <div id="timer" style="display:none; color: #ffcc00; font-size: 0.9rem;">¡SUERTE! <span id="secs">300</span>s</div>
     </div>
 
     <script>
         let coins = 0;
         let lifetimeTotal = 0;
         let isbuffieActive = false;
+        let lastClickTime = 0; // Para evitar doble ejecución (clic + toque)
 
         const rarities = [
             { name: "Rare", chance: 55.4, val: 10, color: "#56de1e" },
@@ -126,7 +107,12 @@
 
         const titles = ["Noob", "Normal", "Good", "Epic player", "Legendary player", "Pro", "King", "Legend", "GOD"];
 
-        function openStardrop() {
+        function openStardrop(event) {
+            // Evita que se ejecute dos veces en algunos dispositivos
+            if (Date.now() - lastClickTime < 100) return;
+            lastClickTime = Date.now();
+            if(event) event.preventDefault(); 
+
             let roll = Math.random() * 100;
             let luckMult = isbuffieActive ? 3 : 1;
             let win = rarities[0];
@@ -134,3 +120,58 @@
             for (let i = rarities.length - 1; i >= 0; i--) {
                 if (roll <= rarities[i].chance * luckMult) {
                     win = rarities[i];
+                    break;
+                }
+            }
+
+            coins += win.val;
+            lifetimeTotal += win.val;
+            
+            document.getElementById('coin-display').innerText = coins + " 💰";
+            document.getElementById('rarity-text').innerText = win.name;
+            document.getElementById('rarity-text').style.color = win.color;
+            document.getElementById('stardrop-img').style.filter = `drop-shadow(0 0 35px ${win.color})`;
+
+            updateProgression();
+        }
+
+        function updateProgression() {
+            let rankIdx = Math.floor(lifetimeTotal / 1500);
+            if(rankIdx >= titles.length) rankIdx = titles.length - 1;
+            document.getElementById('player-title').innerText = titles[rankIdx];
+
+            let currentXP = lifetimeTotal % 1500;
+            let percent = (currentXP / 1500) * 100;
+            document.getElementById('progress-fill').style.width = percent + "%";
+            document.getElementById('xp-text').innerText = `Faltan ${1500 - currentXP} para el próximo título`;
+        }
+
+        function buybuffie(event) {
+            if(event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            if (coins >= 100 && !isbuffieActive) {
+                coins -= 100;
+                isbuffieActive = true;
+                document.getElementById('coin-display').innerText = coins + " 💰";
+                document.getElementById('buffie-btn').disabled = true;
+                document.getElementById('timer').style.display = 'block';
+                
+                let time = 300;
+                let clock = setInterval(() => {
+                    time--;
+                    document.getElementById('secs').innerText = time;
+                    if(time <= 0) {
+                        clearInterval(clock);
+                        isbuffieActive = false;
+                        document.getElementById('buffie-btn').disabled = false;
+                        document.getElementById('timer').style.display = 'none';
+                    }
+                }, 1000);
+            }
+        }
+    </script>
+</body>
+</html>
