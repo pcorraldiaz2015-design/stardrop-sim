@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Stardrop Simulator - Sound Control</title>
     
-    <link rel="apple-touch-icon" href="Starr-Drop-1.png">
+    <link rel="apple-touch-icon" href="photo-output.jpg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Stardrop Sim">
@@ -72,8 +72,6 @@
             z-index: 20; display: flex; flex-direction: column; align-items: center;
             box-shadow: 0 0 15px rgba(0,0,0,0.5);
             transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            
-            /* Ajuste para móviles muy pequeños: evitar desborde */
             max-width: 45%; 
             box-sizing: border-box;
         }
@@ -88,6 +86,14 @@
             display: none; box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
             max-width: 80%;
         }
+
+        #restart-btn {
+            background: #ffd700; color: black; border: none; padding: 10px 20px;
+            font-family: 'Arial Black', sans-serif; border-radius: 10px;
+            font-size: 1.2rem; cursor: pointer; margin-top: 15px;
+            transition: transform 0.1s;
+        }
+        #restart-btn:active { transform: scale(0.9); }
 
         /* --- SONIDO ICONO --- */
         #sound-toggle {
@@ -138,7 +144,6 @@
         #shop-image-img { width: 100%; height: auto; display: block; }
         #timer { color: #ffcc00; font-size: 1.1rem; display: none; }
 
-        /* --- RESPONSIVE MEDIA QUERIES --- */
         @media (max-width: 600px) {
             #left-hud, #right-hud { top: 10px; padding: 10px 15px; }
             .coins { font-size: 1.5rem; }
@@ -149,7 +154,6 @@
             #right-hud { right: 10px; }
         }
 
-        /* Nuevo ajuste para pantallas extremadamente estrechas (ej. iPhone SE o en split view) */
         @media (max-width: 360px) {
             .corner-hud { padding: 8px 10px; border-width: 2px; }
             .coins { font-size: 1.1rem; }
@@ -170,7 +174,7 @@
     <div id="end-screen">
         <h2 style="color: #ffd700; margin-top: 0;">¡FELICIDADES!</h2>
         <p>Te has pasado el juego.</p>
-        <p style="font-size: 0.9rem; color: #00ffff;">Recarga para renacer.</p>
+        <button id="restart-btn">REINICIAR TODO</button>
     </div>
 
     <div class="corner-hud" id="left-hud">
@@ -269,6 +273,9 @@
         let coins = 0, lifetimeTotal = 0, isbuffieActive = false, buffieCount = 0;
         let isLevelingUp = false, canCloseLevelUp = false, lastInteractionTime = 0, currentRankIdx = 0, gameFinished = false;
         
+        let lastRarityName = "";
+        let consecutiveRarityCount = 0;
+
         const rarities = [
             { name: "Rare", chance: 50.4, val: 8.5, color: "#56de1e", bgColor: "#1c2e0a" },
             { name: "Super Rare", chance: 28.2, val: 30, color: "#0084ff", bgColor: "#002b55" },
@@ -311,10 +318,30 @@
             updateUI();
             updateProgression();
 
-            let roll = Math.random() * 100, luckMult = isbuffieActive ? 3 : 1, nextWin = rarities[0];
-            for (let i = rarities.length - 1; i >= 0; i--) {
-                if (roll <= rarities[i].chance * luckMult) { nextWin = rarities[i]; break; }
+            let nextWin;
+            let isValidRoll = false;
+
+            while (!isValidRoll) {
+                let roll = Math.random() * 100, luckMult = isbuffieActive ? 3 : 1;
+                let potentialWin = rarities[0];
+                for (let i = rarities.length - 1; i >= 0; i--) {
+                    if (roll <= rarities[i].chance * luckMult) { potentialWin = rarities[i]; break; }
+                }
+
+                if (potentialWin.name === lastRarityName) {
+                    if (consecutiveRarityCount < 3) {
+                        nextWin = potentialWin;
+                        consecutiveRarityCount++;
+                        isValidRoll = true;
+                    }
+                } else {
+                    nextWin = potentialWin;
+                    lastRarityName = nextWin.name;
+                    consecutiveRarityCount = 1;
+                    isValidRoll = true;
+                }
             }
+
             currentVisibleWin = nextWin;
             rarityText.innerText = currentVisibleWin.name;
             rarityText.style.color = currentVisibleWin.color;
@@ -386,7 +413,24 @@
             if (!gameFinished) stardropContainer.classList.remove('blocked');
         }
 
+        function restartGame() {
+            coins = 0; lifetimeTotal = 0; buffieCount = 0;
+            isbuffieActive = false; gameFinished = false;
+            currentRankIdx = 0; lastRarityName = ""; consecutiveRarityCount = 0;
+            document.getElementById('end-screen').style.display = 'none';
+            stardropContainer.classList.remove('blocked');
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('buffie-status').style.visibility = 'hidden';
+            currentVisibleWin = rarities[0];
+            rarityText.innerText = currentVisibleWin.name;
+            rarityText.style.color = currentVisibleWin.color;
+            document.body.style.background = `radial-gradient(circle, ${currentVisibleWin.bgColor} 0%, #000000 100%)`;
+            updateUI();
+            updateProgression();
+        }
+
         rightHud.addEventListener('click', () => { if (canCloseLevelUp) closeLevelUp(); });
+        document.getElementById('restart-btn').addEventListener('click', restartGame);
 
         function handleBuffie(e) {
             if (shopImgBtnContainer.classList.contains('disabled') || gameFinished) return;
@@ -405,7 +449,7 @@
                 document.getElementById('secs').innerText = time;
                 let clock = setInterval(() => {
                     time--; document.getElementById('secs').innerText = time;
-                    if(time <= 0) { 
+                    if(time <= 0 || gameFinished) { 
                         clearInterval(clock); 
                         isbuffieActive = false; 
                         document.getElementById('timer').style.display = 'none'; 
