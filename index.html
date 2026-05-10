@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stardrop Simulator - Responsive Edition</title>
+    <style>
+        body {
+            background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
+            color: white; font-family: 'Arial Black', sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 100vh; margin: 0; overflow: hidden;
+            padding: 10px; box-sizing: border-box;
+        }
+
+        /* Marcador de Monedas y Rango */
+        .hud {
+            position: absolute; top: 10px; background: rgba(0,0,0,0.85);
+            padding: 10px 20px; border-radius: 15px; border: 2px solid #ffd700;
+            text-align: center; width: 90%; max-width: 300px;
+            z-index: 20;
+        }
+        .coins { color: #ffd700; font-size: 1.5rem; margin: 0; }
+        .title-display { color: #00ffff; font-size: 1rem; text-transform: uppercase; margin-top: 2px; }
+
+        /* Contenedor del Starr Drop */
+        #stardrop-container {
+            position: relative; cursor: pointer; transition: transform 0.1s;
+            width: 70vw; height: 70vw; max-width: 320px; max-height: 320px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 20px 0;
+        }
+        #stardrop-container:active { transform: scale(0.9); }
+
+        #stardrop-img {
+            width: 100%; height: auto;
+            filter: drop-shadow(0 0 20px #56de1e);
+            transition: filter 0.3s ease;
+        }
+
+        .rarity-label {
+            font-size: 2.5rem; text-transform: uppercase; margin-bottom: 5px;
+            text-shadow: 3px 3px #000; font-style: italic;
+            z-index: 5;
+        }
+
+        /* Barra de Progreso */
+        .progress-container {
+            width: 100%; background: #333; height: 8px; border-radius: 4px;
+            margin-top: 5px; overflow: hidden; border: 1px solid #555;
+        }
+        #progress-fill { height: 100%; background: #00ffff; width: 0%; transition: width 0.3s; }
+
+        /* Tienda */
+        .shop { margin-top: 10px; z-index: 10; text-align: center; }
+        .buffie-btn {
+            background: #ff4b2b; color: white; border: 2px solid white;
+            padding: 10px 20px; border-radius: 12px; font-weight: bold; 
+            cursor: pointer; font-size: 1rem; white-space: nowrap;
+        }
+        .buffie-btn:disabled { background: #444; border-color: #222; opacity: 0.6; }
+
+        #timer { font-size: 0.9rem; color: #ffcc00; margin-top: 5px; }
+
+        /* --- AJUSTES PARA MÓVIL EN HORIZONTAL (LANDSCAPE) --- */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body { flex-direction: row; justify-content: space-around; padding-top: 50px; }
+            
+            .hud { width: 180px; top: 10px; left: 10px; padding: 5px 10px; }
+            .coins { font-size: 1.2rem; }
+            .title-display { font-size: 0.8rem; }
+            
+            #stardrop-container { width: 40vh; height: 40vh; margin: 0; }
+            
+            .rarity-label { font-size: 1.8rem; position: absolute; bottom: 10px; }
+            
+            .shop { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+            .buffie-btn { padding: 8px 15px; font-size: 0.8rem; }
+        }
+
+        /* Ajuste para pantallas muy pequeñas */
+        @media (max-width: 400px) {
+            .rarity-label { font-size: 2rem; }
+            .coins { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud">
+        <p class="coins" id="coin-display">0 💰</p>
+        <div class="title-display" id="player-title">NOOB</div>
+        <div class="progress-container">
+            <div id="progress-fill"></div>
+        </div>
+        <small id="xp-text" style="color: #aaa; font-size: 0.6rem;">Faltan 1500 para el próximo título</small>
+    </div>
+
+    <div id="rarity-text" class="rarity-label" style="color: #56de1e;">RARE</div>
+
+    <div id="stardrop-container" onclick="openStardrop()">
+        <img src="Starr-Drop-1.png" id="stardrop-img" alt="Starr Drop">
+    </div>
+
+    <div class="shop">
+        <button class="buffie-btn" id="buffie-btn" onclick="buybuffie(event)">BUFFIE x2 (100 💰)</button>
+        <div id="timer" style="display:none;">
+            ¡SUERTE! <span id="secs">300</span>s
+        </div>
+    </div>
+
+    <script>
+        let coins = 0;
+        let lifetimeTotal = 0;
+        let isbuffieActive = false;
+
+        const rarities = [
+            { name: "Rare", chance: 55.4, val: 10, color: "#56de1e" },
+            { name: "Ultrarare", chance: 25, val: 35, color: "#0084ff" },
+            { name: "Epic", chance: 10, val: 100, color: "#d320ff" },
+            { name: "Mithic", chance: 4, val: 350, color: "#ff2a2a" },
+            { name: "Legendary", chance: 0.5, val: 1200, color: "#ffcc00" },
+            { name: "Ultra", chance: 5.0, val: 4000, color: "#ffffff" },
+            { name: "Special", chance: 0.1, val: 10000, color: "#00ffff" }
+        ];
+
+        const titles = ["Noob", "Normal", "Good", "Epic player", "Legendary player", "Pro", "King", "Legend", "GOD"];
+
+        function openStardrop() {
+            let roll = Math.random() * 100;
+            let luckMult = isbuffieActive ? 3 : 1;
+            let win = rarities[0];
+
+            for (let i = rarities.length - 1; i >= 0; i--) {
+                if (roll <= rarities[i].chance * luckMult) {
+                    win = rarities[i];
