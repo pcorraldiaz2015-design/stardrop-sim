@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stardrop Simulator - Fixed Duplicate</title>
+    <title>Stardrop Simulator - Sound Control</title>
     <style>
         body {
             background: radial-gradient(circle, #2c3e50 0%, #000000 100%);
@@ -14,179 +14,386 @@
             -webkit-tap-highlight-color: transparent;
             user-select: none;
             touch-action: manipulation;
+            transition: background 0.4s ease; 
         }
 
-        .hud {
-            position: absolute; top: 10px; background: rgba(0,0,0,0.85);
-            padding: 10px 20px; border-radius: 15px; border: 2px solid #ffd700;
-            text-align: center; width: 90%; max-width: 300px; z-index: 20;
+        /* --- ANIMACIONES --- */
+        @keyframes ultraGlow {
+            0% { background-color: #ff7f50; }
+            25% { background-color: #ff8c00; }
+            50% { background-color: #ffb6c1; }
+            75% { background-color: #dda0dd; }
+            100% { background-color: #ff7f50; }
         }
-        .coins { color: #ffd700; font-size: 1.5rem; margin: 0; }
-        .title-display { color: #00ffff; font-size: 1rem; text-transform: uppercase; margin-top: 2px; }
+        @keyframes blink {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 0.6; transform: scale(1.5); }
+        }
+        @keyframes fastSpin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        @keyframes clickBounce {
+            0% { transform: scale(1); }
+            30% { transform: scale(1.2, 0.8); }
+            60% { transform: scale(0.8, 1.2); }
+            100% { transform: scale(1); }
+        }
 
-        #stardrop-container {
-            position: relative; cursor: pointer; transition: transform 0.1s;
-            width: 70vw; height: 70vw; max-width: 320px; max-height: 320px;
+        .ultra-bg-active { animation: ultraGlow 3s infinite alternate; background-blend-mode: overlay; }
+        .spin-animation { animation: fastSpin 0.5s ease-in-out; }
+        .bounce-animation { animation: bounce 3s ease-in-out infinite; }
+        .click-animation { animation: clickBounce 0.4s ease-out; }
+
+        #ultra-flashes {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: none; z-index: 1;
+        }
+        .flash { 
+            position: absolute; background: white; border-radius: 50%; 
+            filter: blur(60px); opacity: 0; animation: blink 2s infinite; 
+        }
+        .ultra-bg-active #ultra-flashes { display: block; }
+
+        /* --- HUD --- */
+        .corner-hud {
+            position: absolute; top: 20px; background: rgba(0,0,0,0.85);
+            padding: 12px 25px; border-radius: 18px; border: 3px solid #ffd700;
+            z-index: 20; display: flex; flex-direction: column; align-items: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #left-hud { left: 20px; min-width: 180px; }
+        #right-hud { right: 20px; min-width: 180px; }
+
+        /* --- CUADRO FINAL --- */
+        #end-screen {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.95); padding: 30px; border-radius: 20px;
+            border: 4px solid #ffd700; z-index: 200; text-align: center;
+            display: none; box-shadow: 0 0 50px rgba(255, 215, 0, 0.4);
+            max-width: 80%;
+        }
+
+        /* --- SONIDO ICONO --- */
+        #sound-toggle {
+            cursor: pointer; margin-top: 10px; width: 35px; height: 35px;
             display: flex; align-items: center; justify-content: center;
-            margin: 20px 0;
-            touch-action: none; 
+            transition: transform 0.1s;
         }
-        #stardrop-container:active { transform: scale(0.9); }
+        #sound-toggle:active { transform: scale(0.8); }
+        #sound-toggle svg { fill: white; width: 100%; height: 100%; }
 
-        #stardrop-img {
-            width: 100%; height: auto;
-            filter: drop-shadow(0 0 20px #56de1e);
-            transition: filter 0.3s ease;
-            pointer-events: none;
+        .level-up-active {
+            top: 50% !important; right: 50% !important;
+            transform: translate(50%, -50%) scale(2);
+            z-index: 100; background: rgba(0, 0, 0, 0.95);
+            border-color: #00ffff; box-shadow: 0 0 100px rgba(0, 255, 255, 0.5);
         }
+        .can-close { cursor: pointer !important; }
 
-        .rarity-label {
-            font-size: 2.5rem; text-transform: uppercase; margin-bottom: 5px;
-            text-shadow: 3px 3px #000; font-style: italic; z-index: 5;
-        }
+        .coins { color: #ffd700; font-size: 2rem; margin: 0; }
+        .title-display { color: #00ffff; font-size: 1.4rem; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
 
         .progress-container {
             width: 100%; background: #333; height: 8px; border-radius: 4px;
-            margin-top: 5px; overflow: hidden; border: 1px solid #555;
+            margin-top: 8px; overflow: hidden; border: 1px solid #555;
         }
         #progress-fill { height: 100%; background: #00ffff; width: 0%; transition: width 0.3s; }
 
-        .shop { margin-top: 10px; z-index: 30; text-align: center; }
-        .buffie-btn {
-            background: #ff4b2b; color: white; border: 2px solid white;
-            padding: 10px 20px; border-radius: 12px; font-weight: bold; 
-            cursor: pointer; font-size: 1rem;
+        /* --- STARDROP --- */
+        #stardrop-container {
+            position: relative; cursor: pointer;
+            width: 70vw; height: 70vw; max-width: 320px; max-height: 320px;
+            display: flex; align-items: center; justify-content: center;
+            margin: 20px 0; z-index: 10;
         }
+        .blocked { pointer-events: none; opacity: 0.5; filter: grayscale(1); }
+        #stardrop-img { width: 100%; height: auto; transition: filter 0.3s ease; pointer-events: none; }
+        
+        .rarity-label { font-size: 2.8rem; text-transform: uppercase; text-shadow: 4px 4px #000; font-style: italic; z-index: 5; text-align: center; }
+        .ultra-text-size { font-size: 3.5rem !important; }
 
-        @media (max-height: 500px) and (orientation: landscape) {
-            body { flex-direction: row; justify-content: space-around; padding-top: 50px; }
-            .hud { width: 180px; top: 10px; left: 10px; }
-            #stardrop-container { width: 40vh; height: 40vh; }
-            .rarity-label { font-size: 1.8rem; position: absolute; bottom: 10px; }
-            .shop { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+        /* --- COMPONENTES DEL BUFFIE --- */
+        #left-hud-main { display: flex; align-items: center; width: 100%; gap: 15px; }
+        #buffie-wrapper { display: flex; flex-direction: column; align-items: center; min-width: 80px; }
+        #buffie-status { color: #00ff00; font-size: 0.8rem; font-weight: bold; visibility: hidden; }
+        #shop-image-container { position: relative; cursor: pointer; width: 80px; height: 80px; transition: all 0.3s; }
+        #shop-image-container:active { transform: scale(0.9); }
+        #shop-image-container.disabled { filter: grayscale(1); opacity: 0.6; cursor: not-allowed; }
+        #shop-image-img { width: 100%; height: auto; display: block; }
+        #timer { color: #ffcc00; font-size: 1.1rem; display: none; }
+
+        @media (max-width: 600px) {
+            #left-hud, #right-hud { top: 10px; padding: 10px 15px; }
+            .coins { font-size: 1.5rem; }
+            .title-display { font-size: 1rem; }
+            .level-up-active { transform: translate(50%, -50%) scale(1.5); }
+            #shop-image-container { width: 60px; height: 60px; }
         }
     </style>
 </head>
 <body>
 
-    <div class="hud">
-        <p class="coins" id="coin-display">0 💰</p>
-        <div class="title-display" id="player-title">NOOB</div>
+    <div id="ultra-flashes"></div>
+
+    <div id="end-screen">
+        <h2 style="color: #ffd700; margin-top: 0;">¡FELICIDADES!</h2>
+        <p>Te has pasado el juego.</p>
+        <p style="font-size: 0.9rem; color: #00ffff;">Recarga para renacer.</p>
+    </div>
+
+    <div class="corner-hud" id="left-hud">
+        <div id="left-hud-main">
+            <p class="coins" id="coin-display">0 💰</p>
+            <div id="buffie-wrapper">
+                <div id="buffie-status">¡Activo!</div>
+                <div id="shop-image-container" class="disabled">
+                    <img src="noFilter.webp" id="shop-image-img" alt="Buffie">
+                </div>
+                <div id="timer"><span id="secs">150</span>s</div>
+            </div>
+        </div>
+        <div id="sound-toggle">
+            <svg id="sound-icon" viewBox="0 0 24 24">
+                <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="corner-hud" id="right-hud">
+        <div class="title-display"><span>🏅</span> <span id="player-title">NOOB</span></div>
         <div class="progress-container"><div id="progress-fill"></div></div>
-        <small id="xp-text" style="color: #aaa; font-size: 0.6rem;">Faltan 1500 para el próximo título</small>
+        <small id="xp-text" style="color: #aaa; font-size: 0.7rem; margin-top: 5px;">Faltan 1500</small>
     </div>
 
     <div id="rarity-text" class="rarity-label" style="color: #56de1e;">RARE</div>
 
-    <div id="stardrop-container">
+    <div id="stardrop-container" class="bounce-animation">
         <img src="Starr-Drop-1.png" id="stardrop-img" alt="Starr Drop">
     </div>
 
-    <div class="shop">
-        <button class="buffie-btn" id="buffie-btn">BUFFIE x2 (100 💰)</button>
-        <div id="timer" style="display:none; color: #ffcc00; font-size: 0.9rem;">¡SUERTE! <span id="secs">300</span>s</div>
-    </div>
-
     <script>
-        let coins = 0;
-        let lifetimeTotal = 0;
-        let isbuffieActive = false;
-        let lastInteractionTime = 0; // Para evitar duplicados
+        const flashContainer = document.getElementById('ultra-flashes');
+        for (let i = 0; i < 15; i++) {
+            const flash = document.createElement('div');
+            flash.className = 'flash';
+            flash.style.width = Math.random() * 200 + 100 + 'px';
+            flash.style.height = flash.style.width;
+            flash.style.left = Math.random() * 100 + '%';
+            flash.style.top = Math.random() * 100 + '%';
+            flash.style.animationDelay = Math.random() * 3 + 's';
+            flashContainer.appendChild(flash);
+        }
 
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let musicInterval = null;
+        let step = 0;
+        let isMuted = false;
+
+        function playSynthNote(freq, type, duration, volume) {
+            if (isMuted) return; 
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playUltraMusic() {
+            if (isMuted) return;
+            const melody = [329.63, 392.00, 523.25, 493.88, 329.63, 392.00, 523.25, 587.33];
+            const bass = [130.81, 130.81, 130.81, 130.81, 164.81, 164.81, 164.81, 164.81];
+            playSynthNote(melody[step % melody.length], 'triangle', 0.6, 0.1);
+            playSynthNote(bass[step % bass.length], 'sawtooth', 0.4, 0.05);
+            step++;
+        }
+
+        function playSoundEffect(type) {
+            if (isMuted) return;
+            if (type === 'tap') playSynthNote(440, 'sine', 0.1, 0.2);
+            else if (type === 'levelup') {
+                [261, 329, 392, 523].forEach((f, i) => {
+                    setTimeout(() => playSynthNote(f, 'square', 0.5, 0.1), i * 100);
+                });
+            }
+        }
+
+        const soundBtn = document.getElementById('sound-toggle');
+        const soundIcon = document.getElementById('sound-icon');
+        const mutePath = "M4.34 2.93L2.93 4.34 7.29 8.7 7 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81l2.91 2.91 1.41-1.41L4.34 2.93zM10 15.17L7.83 13H5v-2h2.83l.88-.88L10 11.41v3.76zM19 12c0-1.77-1.02-3.29-2.5-4.03V5.62c2.89.86 5 3.54 5 6.71 0 1.17-.26 2.28-.73 3.27l-1.45-1.45c.11-.37.18-.75.18-1.15zM16.5 12c0-.06-.01-.11-.01-.17l-1.49-1.49v3.32c1.07-.46 1.5-1.15 1.5-1.66zM12 4L9.91 6.09 12 8.18V4z";
+        const soundPath = "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
+
+        soundBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isMuted = !isMuted;
+            soundIcon.innerHTML = `<path d="${isMuted ? mutePath : soundPath}"/>`;
+            if (isMuted) stopMusic();
+        });
+
+        let coins = 0, lifetimeTotal = 0, isbuffieActive = false, buffieCount = 0;
+        let isLevelingUp = false, canCloseLevelUp = false, lastInteractionTime = 0, currentRankIdx = 0, gameFinished = false;
+        
         const rarities = [
-            { name: "Rare", chance: 55.4, val: 10, color: "#56de1e" },
-            { name: "Ultrarare", chance: 25, val: 35, color: "#0084ff" },
-            { name: "Epic", chance: 10, val: 100, color: "#d320ff" },
-            { name: "Mithic", chance: 4, val: 350, color: "#ff2a2a" },
-            { name: "Legendary", chance: 0.5, val: 1200, color: "#ffcc00" },
-            { name: "Ultra", chance: 5.0, val: 4000, color: "#ffffff" },
-            { name: "Special", chance: 0.1, val: 10000, color: "#00ffff" }
+            { name: "Rare", chance: 50.4, val: 8.5, color: "#56de1e", bgColor: "#1c2e0a" },
+            { name: "Super Rare", chance: 28.2, val: 30, color: "#0084ff", bgColor: "#002b55" },
+            { name: "Epic", chance: 12.0, val: 85, color: "#d320ff", bgColor: "#440055" },
+            { name: "Mythic", chance: 6.0, val: 300, color: "#ff2a2a", bgColor: "#550000" },
+            { name: "Legendary", chance: 2.5, val: 1020, color: "#ffcc00", bgColor: "#554400" },
+            { name: "Ultra", chance: 0.8, val: 3400, color: "#ffffff", bgColor: "ultra-special" },
+            { name: "Special", chance: 0.1, val: 8500, color: "#00ffff", bgColor: "#004444" }
         ];
 
         const titles = ["Noob", "Normal", "Good", "Epic player", "Legendary player", "Pro", "King", "Legend", "GOD"];
+        let currentVisibleWin = rarities[0];
+        const stardropImg = document.getElementById('stardrop-img'), stardropContainer = document.getElementById('stardrop-container');
+        const rightHud = document.getElementById('right-hud'), rarityText = document.getElementById('rarity-text');
+        const shopImgBtnContainer = document.getElementById('shop-image-container');
+
+        function startMusic() { if (musicInterval || isMuted) return; step = 0; musicInterval = setInterval(playUltraMusic, 250); }
+        function stopMusic() { clearInterval(musicInterval); musicInterval = null; }
 
         function handleInteraction(e) {
-            // BLOQUEO DE DUPLICADOS: Si hubo una acción hace menos de 200ms, ignoramos esta
+            if (isLevelingUp || gameFinished) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
             const now = Date.now();
             if (now - lastInteractionTime < 200) return;
             lastInteractionTime = now;
+            if (e.type === 'touchstart') e.preventDefault(); 
 
-            // Si es un toque de móvil, evitamos que luego se dispare el evento de ratón
-            if (e.type === 'touchstart') {
-                e.preventDefault(); 
-            }
+            playSoundEffect('tap');
+            stopMusic();
+            document.body.classList.remove('ultra-bg-active');
+            stardropImg.classList.remove('spin-animation');
+            rarityText.classList.remove('ultra-text-size');
 
-            let roll = Math.random() * 100;
-            let luckMult = isbuffieActive ? 3 : 1;
-            let win = rarities[0];
+            stardropContainer.classList.remove('click-animation');
+            void stardropContainer.offsetWidth; 
+            stardropContainer.classList.add('click-animation');
 
-            for (let i = rarities.length - 1; i >= 0; i--) {
-                if (roll <= rarities[i].chance * luckMult) {
-                    win = rarities[i];
-                    break;
-                }
-            }
-
-            coins += win.val;
-            lifetimeTotal += win.val;
-            
-            document.getElementById('coin-display').innerText = coins + " 💰";
-            document.getElementById('rarity-text').innerText = win.name;
-            document.getElementById('rarity-text').style.color = win.color;
-            document.getElementById('stardrop-img').style.filter = `drop-shadow(0 0 35px ${win.color})`;
-
+            coins += currentVisibleWin.val;
+            lifetimeTotal += currentVisibleWin.val;
+            updateUI();
             updateProgression();
+
+            let roll = Math.random() * 100, luckMult = isbuffieActive ? 3 : 1, nextWin = rarities[0];
+            for (let i = rarities.length - 1; i >= 0; i--) {
+                if (roll <= rarities[i].chance * luckMult) { nextWin = rarities[i]; break; }
+            }
+            currentVisibleWin = nextWin;
+            rarityText.innerText = currentVisibleWin.name;
+            rarityText.style.color = currentVisibleWin.color;
+            stardropImg.style.filter = `drop-shadow(0 0 35px ${currentVisibleWin.color})`;
+
+            if (currentVisibleWin.name === "Ultra") {
+                document.body.classList.add('ultra-bg-active');
+                stardropImg.classList.add('spin-animation');
+                rarityText.classList.add('ultra-text-size');
+                startMusic();
+            } else {
+                document.body.style.background = `radial-gradient(circle, ${currentVisibleWin.bgColor} 0%, #000000 100%)`;
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('coin-display').innerText = Math.floor(coins).toLocaleString() + " 💰";
+            let cost = buffieCount === 0 ? 150 : (buffieCount === 1 ? 27000 : 30000);
+            if (coins < cost || isbuffieActive) {
+                shopImgBtnContainer.classList.add('disabled');
+            } else {
+                shopImgBtnContainer.classList.remove('disabled');
+            }
         }
 
         function updateProgression() {
-            let rankIdx = Math.floor(lifetimeTotal / 1500);
-            if(rankIdx >= titles.length) rankIdx = titles.length - 1;
-            document.getElementById('player-title').innerText = titles[rankIdx];
+            let accumulatedXP = 0, xpNeededForNext = 1500, currentLevelXP = 0, rankIdx = 0;
+            for (let i = 0; i < titles.length; i++) {
+                let costOfThisLevel = 1500 + (i * 555);
+                if (lifetimeTotal >= accumulatedXP + costOfThisLevel) {
+                    accumulatedXP += costOfThisLevel; rankIdx = i + 1;
+                } else {
+                    xpNeededForNext = costOfThisLevel; currentLevelXP = lifetimeTotal - accumulatedXP; break;
+                }
+            }
+            
+            if (rankIdx >= titles.length - 1) {
+                rankIdx = titles.length - 1;
+                if (!gameFinished) {
+                    gameFinished = true;
+                    document.getElementById('end-screen').style.display = 'block';
+                    stardropContainer.classList.add('blocked');
+                }
+            }
 
-            let currentXP = lifetimeTotal % 1500;
-            let percent = (currentXP / 1500) * 100;
-            document.getElementById('progress-fill').style.width = percent + "%";
-            document.getElementById('xp-text').innerText = `Faltan ${1500 - currentXP} para el próximo título`;
+            if (rankIdx > currentRankIdx && !gameFinished) { 
+                triggerLevelUpAnimation(); 
+                playSoundEffect('levelup'); 
+            }
+            
+            currentRankIdx = rankIdx;
+            document.getElementById('player-title').innerText = titles[rankIdx];
+            document.getElementById('progress-fill').style.width = gameFinished ? "100%" : (currentLevelXP / xpNeededForNext) * 100 + "%";
+            document.getElementById('xp-text').innerText = gameFinished ? `MAX` : `Faltan ${Math.ceil(xpNeededForNext - currentLevelXP).toLocaleString()}`;
         }
 
-        function handleBuffie(e) {
-            const now = Date.now();
-            if (now - lastInteractionTime < 200) return;
-            lastInteractionTime = now;
-            
-            e.stopPropagation();
+        function triggerLevelUpAnimation() {
+            isLevelingUp = true; canCloseLevelUp = false;
+            rightHud.classList.add('level-up-active');
+            stardropContainer.classList.add('blocked');
+            setTimeout(() => { canCloseLevelUp = true; rightHud.classList.add('can-close'); }, 1000);
+            setTimeout(closeLevelUp, 4000);
+        }
 
-            if (coins >= 100 && !isbuffieActive) {
-                coins -= 100;
-                isbuffieActive = true;
-                document.getElementById('coin-display').innerText = coins + " 💰";
-                document.getElementById('buffie-btn').disabled = true;
+        function closeLevelUp() {
+            if (!isLevelingUp) return;
+            isLevelingUp = false;
+            rightHud.classList.remove('level-up-active', 'can-close');
+            if (!gameFinished) stardropContainer.classList.remove('blocked');
+        }
+
+        rightHud.addEventListener('click', () => { if (canCloseLevelUp) closeLevelUp(); });
+
+        function handleBuffie(e) {
+            if (shopImgBtnContainer.classList.contains('disabled') || gameFinished) return;
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const now = Date.now();
+            if (now - lastInteractionTime < 200 || isLevelingUp) return;
+            lastInteractionTime = now;
+            e.stopPropagation();
+            let cost = buffieCount === 0 ? 150 : (buffieCount === 1 ? 27000 : 30000);
+            if (coins >= cost && !isbuffieActive) {
+                coins -= cost; isbuffieActive = true; buffieCount++;
+                updateUI(); 
                 document.getElementById('timer').style.display = 'block';
-                
-                let time = 300;
+                document.getElementById('buffie-status').style.visibility = 'visible';
+                let time = 150;
+                document.getElementById('secs').innerText = time;
                 let clock = setInterval(() => {
-                    time--;
-                    document.getElementById('secs').innerText = time;
-                    if(time <= 0) {
-                        clearInterval(clock);
-                        isbuffieActive = false;
-                        document.getElementById('buffie-btn').disabled = false;
-                        document.getElementById('timer').style.display = 'none';
+                    time--; document.getElementById('secs').innerText = time;
+                    if(time <= 0) { 
+                        clearInterval(clock); 
+                        isbuffieActive = false; 
+                        document.getElementById('timer').style.display = 'none'; 
+                        document.getElementById('buffie-status').style.visibility = 'hidden';
+                        updateUI(); 
                     }
                 }, 1000);
             }
         }
 
-        const dropContainer = document.getElementById('stardrop-container');
-        const btnBuffie = document.getElementById('buffie-btn');
-
-        // Escuchamos ambos pero la función handleInteraction filtrará los duplicados
-        dropContainer.addEventListener('mousedown', handleInteraction);
-        dropContainer.addEventListener('touchstart', handleInteraction, {passive: false});
-
-        btnBuffie.addEventListener('click', handleBuffie);
-        btnBuffie.addEventListener('touchstart', handleBuffie, {passive: false});
-
+        stardropContainer.addEventListener('mousedown', handleInteraction);
+        stardropContainer.addEventListener('touchstart', handleInteraction, {passive: false});
+        shopImgBtnContainer.addEventListener('click', handleBuffie);
+        updateUI();
     </script>
 </body>
 </html>
