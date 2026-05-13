@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Stardrop Simulator - Responsive Buffie</title>
+    <title>Starr Games - Menu Music</title>
     
     <link rel="icon" type="image/jpeg" href="photo-output.jpeg">
     <link rel="apple-touch-icon" href="photo-output.jpeg">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Stardrop Sim">
+    <meta name="apple-mobile-web-app-title" content="Starr Game">
 
     <style>
         body {
@@ -81,7 +81,6 @@
         #play-btn:hover, .coming-soon-btn:hover { transform: scale(1.05); } 
         #play-btn:active, .coming-soon-btn:active { transform: scale(0.95); }
         
-        /* CAMBIOS SOLICITADOS: SATURACIÓN Y BRILLO */
         .coming-soon-btn {
             filter: saturate(40%) brightness(75%);
         }
@@ -231,6 +230,10 @@
 </head>
 <body>
 
+    <audio id="menu-music" loop>
+        <source src="videoplayback.m4a" type="audio/mp4">
+    </audio>
+
     <div id="main-menu">
         <button id="update-btn">Actualizar</button>
         <div class="menu-header">
@@ -295,7 +298,16 @@
     </div>
 
     <script>
+        const menuMusic = document.getElementById('menu-music');
         const updateBtn = document.getElementById('update-btn');
+        
+        // Auto-play music on first interaction
+        document.addEventListener('click', () => {
+            if (!isMuted && menuMusic.paused && gameContent.style.display !== 'flex') {
+                menuMusic.play().catch(e => console.log("Audio play blocked"));
+            }
+        }, { once: true });
+
         async function checkForUpdates() {
             try {
                 const response = await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
@@ -316,6 +328,7 @@
         playBtn.addEventListener('click', () => {
             mainMenu.style.display = 'none';
             gameContent.style.display = 'flex';
+            menuMusic.pause();
             if (audioCtx.state === 'suspended') audioCtx.resume();
             playSoundEffect('start');
         });
@@ -326,6 +339,7 @@
             document.body.style.background = "radial-gradient(circle, #2c3e50 0%, #000000 100%)";
             gameContent.style.display = 'none';
             mainMenu.style.display = 'flex';
+            if (!isMuted) menuMusic.play();
         });
 
         const flashContainer = document.getElementById('ultra-flashes');
@@ -388,7 +402,12 @@
             e.stopPropagation();
             isMuted = !isMuted;
             soundIcon.innerHTML = `<path d="${isMuted ? mutePath : soundPath}"/>`;
-            if (isMuted) stopMusic();
+            if (isMuted) {
+                stopMusic();
+                menuMusic.pause();
+            } else {
+                if (gameContent.style.display !== 'flex') menuMusic.play();
+            }
         });
 
         let coins = 0, lifetimeTotal = 0, isbuffieActive = false, buffieCount = 0;
